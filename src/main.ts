@@ -137,7 +137,7 @@ function latLngBoundsFor(i: number, j: number) {
 
 const cellLayers = new Map<
   string,
-  { rect: leaflet.Rectangle; marker: leaflet.Marker<any> }
+  { rect: leaflet.Rectangle; marker: leaflet.Marker<leaflet.DivIcon> }
 >();
 
 function drawCell(i: number, j: number) {
