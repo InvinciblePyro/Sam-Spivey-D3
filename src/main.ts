@@ -162,7 +162,7 @@ function updateInventoryUI() {
 // Movement buttons
 mapDiv.focus();
 
-window.addEventListener("keydown", (e) => {
+globalThis.addEventListener("keydown", (e) => {
   console.log("Key pressed:", e.key); // <-- check this
   switch (e.key) {
     case "ArrowUp":
