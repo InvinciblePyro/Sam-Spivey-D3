@@ -109,6 +109,7 @@ const UIButtons: Node[] = [];
 ["N", "S", "E", "W"].forEach((dir) => {
   const b = document.createElement("button");
   b.textContent = dir;
+  b.style.fontSize = "20px";
   b.onclick = () => {
     if (dir === "N") movePlayer(1, 0);
     if (dir === "S") movePlayer(-1, 0);
