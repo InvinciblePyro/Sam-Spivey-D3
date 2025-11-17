@@ -1,5 +1,3 @@
-// FINISHED D3.b
-
 // @deno-types="npm:@types/leaflet"
 import leaflet from "leaflet";
 
@@ -88,8 +86,12 @@ const playerCircle = leaflet.circle(playerPos, {
 // GAME STATE
 // ---------------------------------------------
 
-const cellOverrides = new Map<string, number | null>();
-let held: number | null = null;
+// Memory-efficient cell storage
+// Only store state for modified cells; others are generated on the fly
+type CellState = { token: number | null };
+
+// Map key is "i,j" -> stores modified cells
+const modifiedCells = new Map<string, CellState>();
 
 // ---------------------------------------------
 // INVENTORY UI
@@ -193,7 +195,8 @@ function cellKey(i: number, j: number) {
   return `${i},${j}`;
 }
 
-function generateToken(i: number, j: number): number | null {
+// Flyweight: generate default token for unmodified cells
+function generateTokenFlyweight(i: number, j: number): number | null {
   const roll = luck(`spawn:${i},${j}`);
   if (roll < 0.2) {
     const r2 = luck(`value:${i},${j}`);
@@ -204,15 +207,16 @@ function generateToken(i: number, j: number): number | null {
   return null;
 }
 
+// Memento: retrieve persistent state if cell was modified
 function getCellToken(i: number, j: number): number | null {
-  const key = cellKey(i, j);
-  if (cellOverrides.has(key)) return cellOverrides.get(key)!;
-  return generateToken(i, j);
+  const key = `${i},${j}`;
+  if (modifiedCells.has(key)) return modifiedCells.get(key)!.token;
+  return generateTokenFlyweight(i, j); // Flyweight default
 }
 
-function setCellToken(i: number, j: number, value: number | null) {
-  const key = cellKey(i, j);
-  cellOverrides.set(key, value);
+function setCellToken(i: number, j: number, token: number | null) {
+  const key = `${i},${j}`;
+  modifiedCells.set(key, { token }); // store the "Memento"
   redrawCell(i, j);
 }
 
@@ -280,7 +284,6 @@ function redrawCell(i: number, j: number) {
 function updateCells() {
   const center = map.getCenter();
   const { i: ci, j: cj } = cellForLatLng(center.lat, center.lng);
-
   const needed = new Set<string>();
 
   for (let di = -GRID_RADIUS; di <= GRID_RADIUS; di++) {
@@ -299,7 +302,6 @@ function updateCells() {
       map.removeLayer(rect);
       map.removeLayer(marker);
       cellLayers.delete(key);
-      cellOverrides.delete(key);
     }
   }
 }
