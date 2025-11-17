@@ -93,9 +93,6 @@ let held: number | null = null;
 // INVENTORY UI
 // ---------------------------------------------
 // Create a div inside the control panel for inventory
-const inventoryDiv = document.createElement("div");
-inventoryDiv.id = "inventory";
-controlPanel.appendChild(inventoryDiv);
 
 // Add movement buttons container
 const buttonsDiv = document.createElement("div");
@@ -143,14 +140,17 @@ const bottomRow = document.createElement("div");
 bottomRow.appendChild(UIButtons[1]); // S
 buttonsDiv.appendChild(bottomRow);
 
+// Create a div inside the control panel for inventory
+const inventoryDiv = document.createElement("div");
+inventoryDiv.id = "inventory";
+controlPanel.appendChild(inventoryDiv);
+
 // Update only the inventory div
 function updateInventoryUI() {
   if (held === null) {
-    inventoryDiv.innerHTML = `<h2>Inventory</h2>
-      Holding: <b>nothing</b>`;
+    inventoryDiv.innerHTML = `Holding: <b>nothing</b>`;
   } else {
-    inventoryDiv.innerHTML = `<h2>Inventory</h2>
-      Holding token: <b>${held}</b>`;
+    inventoryDiv.innerHTML = `Holding token: <b>${held}</b>`;
   }
 
   if (held !== null && held >= WIN_VALUE) {
