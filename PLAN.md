@@ -34,12 +34,12 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] can combine cells together to double their number
 
 ## D3.b
+
 The interface offers some buttons to simulate local player movement (e.g. to move north/south/east/west by one grid step).
-As the player moves, cells continue to be visible all the way out to the edge of the map (i.e. they spawn/despawn as necessary to keep the screen full).
-The representation of grid cells uses an earth-spanning coordinate system anchored at Null Island (zero latitude, zero longitude).
+As the player moves, cells continue to be visible all the way out to the edge of the map (i.e. they spawn/despawn as necessary to keep the screen full). The representation of grid cells uses an earth-spanning coordinate system anchored at Null Island (zero latitude, zero longitude).
 
 - [x] PLAYER CAN FINALLY MOVE
-- [x] Grid and map follow the player  
+- [x] Grid and map follow the player
 - [x] UI now shows movement controls
 
 ### 
