@@ -7,18 +7,33 @@ import luck from "./_luck.ts";
 import "./style.css";
 
 // ---------------------------------------------
-// CONSTANTS
+// CONSTANTS + PLAYER STATE
 // ---------------------------------------------
 
-const TILE_DEG = 1e-4; // cell width/height
-const INTERACT_RANGE = 3; // max distance to click cells
-const GRID_RADIUS = 12; // how far grid draws around player
-const LEVEL_UP_VALUES = [8, 16];
+const TILE_DEG = 1e-4; // degrees per grid cell
+const INTERACT_RANGE = 3; // cells player can interact with
+const GRID_RADIUS = 12; // cells visible around screen
+const WIN_VALUE = 32; // Winning token value
 
-const CLASSROOM = leaflet.latLng(
-  36.997936938057016,
-  -122.05703507501151,
-);
+// Visual multiplier for player movement so you can see it at high zoom
+const VISUAL_MULT = 50; // 50x larger than TILE_DEG for marker animation
+
+// Null Island start
+let playerI = 0;
+let playerJ = 0;
+
+function latLngFor(i: number, j: number) {
+  return leaflet.latLng(i * TILE_DEG, j * TILE_DEG);
+}
+
+function cellForLatLng(lat: number, lng: number) {
+  return {
+    i: Math.floor(lat / TILE_DEG),
+    j: Math.floor(lng / TILE_DEG),
+  };
+}
+
+let playerPos = latLngFor(playerI, playerJ);
 
 // ---------------------------------------------
 // BASIC PAGE STRUCTURE
@@ -26,11 +41,11 @@ const CLASSROOM = leaflet.latLng(
 
 const controlPanel = document.createElement("div");
 controlPanel.id = "controlPanel";
-controlPanel.innerHTML = "<h2>Inventory</h2>";
 document.body.append(controlPanel);
 
 const mapDiv = document.createElement("div");
 mapDiv.id = "map";
+mapDiv.tabIndex = 0;
 document.body.append(mapDiv);
 
 const statusPanel = document.createElement("div");
@@ -42,65 +57,142 @@ document.body.append(statusPanel);
 // ---------------------------------------------
 
 const map = leaflet.map(mapDiv, {
-  center: CLASSROOM,
+  center: playerPos,
   zoom: 19,
-  minZoom: 19,
+  minZoom: 2,
   maxZoom: 19,
-  zoomControl: false,
-  scrollWheelZoom: false,
+  zoomControl: true,
+  scrollWheelZoom: true,
 });
 
-leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-}).addTo(map);
-
-// Player icon
 leaflet
-  .marker(CLASSROOM)
+  .tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+  })
+  .addTo(map);
+
+const playerMarker = leaflet
+  .marker(playerPos)
   .bindTooltip("You")
   .addTo(map);
+
+// Optional red circle to clearly see player
+const playerCircle = leaflet.circle(playerPos, {
+  radius: VISUAL_MULT,
+  color: "red",
+}).addTo(map);
 
 // ---------------------------------------------
 // GAME STATE
 // ---------------------------------------------
 
-// Each cell may temporarily override its generated token
 const cellOverrides = new Map<string, number | null>();
-
-// What the player is holding
 let held: number | null = null;
 
 // ---------------------------------------------
 // INVENTORY UI
 // ---------------------------------------------
+// Create a div inside the control panel for inventory
+const inventoryDiv = document.createElement("div");
+inventoryDiv.id = "inventory";
+controlPanel.appendChild(inventoryDiv);
 
+// Add movement buttons container
+const buttonsDiv = document.createElement("div");
+buttonsDiv.id = "buttons";
+controlPanel.appendChild(buttonsDiv);
+buttonsDiv.innerHTML =
+  "<br>Keyboard Controls: <br>Arrow Keys<br> <br>Screen Controls: <br>";
+
+// Movement buttons
+const UIButtons: Node[] = [];
+["N", "S", "E", "W"].forEach((dir) => {
+  const b = document.createElement("button");
+  b.textContent = dir;
+  b.onclick = () => {
+    if (dir === "N") movePlayer(1, 0);
+    if (dir === "S") movePlayer(-1, 0);
+    if (dir === "E") movePlayer(0, 1);
+    if (dir === "W") movePlayer(0, -1);
+  };
+  UIButtons.push(b);
+});
+
+// Container for all buttons
+buttonsDiv.style.display = "flex";
+buttonsDiv.style.flexDirection = "column";
+buttonsDiv.style.alignItems = "center"; // center everything horizontally
+
+// Top row: N
+const topRow = document.createElement("div");
+topRow.appendChild(UIButtons[0]); // N
+buttonsDiv.appendChild(topRow);
+
+// Middle row: W E
+const middleRow = document.createElement("div");
+middleRow.style.display = "flex";
+middleRow.style.justifyContent = "space-between";
+middleRow.style.width = "80px"; // controls horizontal spacing
+middleRow.appendChild(UIButtons[3]); // W
+middleRow.appendChild(UIButtons[2]); // E
+buttonsDiv.appendChild(middleRow);
+
+// Bottom row: S
+const bottomRow = document.createElement("div");
+bottomRow.appendChild(UIButtons[1]); // S
+buttonsDiv.appendChild(bottomRow);
+
+// Update only the inventory div
 function updateInventoryUI() {
   if (held === null) {
-    controlPanel.innerHTML = "<h2>Inventory</h2>Holding: <b>nothing</b>";
+    inventoryDiv.innerHTML = `<h2>Inventory</h2>
+      Holding: <b>nothing</b>`;
   } else {
-    controlPanel.innerHTML = `<h2>Inventory</h2>Holding token: <b>${held}</b>`;
+    inventoryDiv.innerHTML = `<h2>Inventory</h2>
+      Holding token: <b>${held}</b>`;
   }
 
-  if (held && LEVEL_UP_VALUES.includes(held)) {
-    statusPanel.innerHTML = `🎉 You crafted a level ${held} token!`;
+  if (held !== null && held >= WIN_VALUE) {
+    statusPanel.innerHTML = "🏆 You win! Congratulations!";
   } else {
     statusPanel.innerHTML = "";
   }
 }
+
+// Movement buttons
+mapDiv.focus();
+
+window.addEventListener("keydown", (e) => {
+  console.log("Key pressed:", e.key); // <-- check this
+  switch (e.key) {
+    case "ArrowUp":
+      movePlayer(1, 0);
+      break;
+    case "ArrowDown":
+      movePlayer(-1, 0);
+      break;
+    case "ArrowRight":
+      movePlayer(0, 1);
+      break;
+    case "ArrowLeft":
+      movePlayer(0, -1);
+      break;
+  }
+});
+
 updateInventoryUI();
 
 // ---------------------------------------------
-// TOKEN GENERATION (DETERMINISTIC)
+// TOKEN GENERATION
 // ---------------------------------------------
 
-function cellKey(i: number, j: number): string {
+function cellKey(i: number, j: number) {
   return `${i},${j}`;
 }
 
 function generateToken(i: number, j: number): number | null {
   const roll = luck(`spawn:${i},${j}`);
   if (roll < 0.2) {
-    // spawn values: 1, 2, 4
     const r2 = luck(`value:${i},${j}`);
     if (r2 < 0.33) return 1;
     if (r2 < 0.66) return 2;
@@ -110,29 +202,19 @@ function generateToken(i: number, j: number): number | null {
 }
 
 function getCellToken(i: number, j: number): number | null {
-  const k = cellKey(i, j);
-  if (cellOverrides.has(k)) return cellOverrides.get(k)!;
+  const key = cellKey(i, j);
+  if (cellOverrides.has(key)) return cellOverrides.get(key)!;
   return generateToken(i, j);
 }
 
 function setCellToken(i: number, j: number, value: number | null) {
-  cellOverrides.set(cellKey(i, j), value);
+  const key = cellKey(i, j);
+  cellOverrides.set(key, value);
   redrawCell(i, j);
 }
 
 // ---------------------------------------------
-// UTILITY FUNCTION: BOUNDS FOR A CELL
-// ---------------------------------------------
-
-function latLngBoundsFor(i: number, j: number) {
-  return leaflet.latLngBounds([
-    [CLASSROOM.lat + i * TILE_DEG, CLASSROOM.lng + j * TILE_DEG],
-    [CLASSROOM.lat + (i + 1) * TILE_DEG, CLASSROOM.lng + (j + 1) * TILE_DEG],
-  ]);
-}
-
-// ---------------------------------------------
-// CELL GRAPHICS (Leaflet-safe version)
+// CELL GRAPHICS
 // ---------------------------------------------
 
 const cellLayers = new Map<
@@ -141,38 +223,39 @@ const cellLayers = new Map<
 >();
 
 function drawCell(i: number, j: number) {
-  const bounds = latLngBoundsFor(i, j);
+  const bounds = leaflet.latLngBounds([
+    [i * TILE_DEG, j * TILE_DEG],
+    [(i + 1) * TILE_DEG, (j + 1) * TILE_DEG],
+  ]);
 
-  // The visual grid box
-  const rect = leaflet.rectangle(bounds, {
-    color: "#555",
-    weight: 1,
-    fillOpacity: 0.15,
-  }).addTo(map);
+  const rect = leaflet
+    .rectangle(bounds, {
+      color: "#555",
+      weight: 1,
+      fillOpacity: 0.15,
+    })
+    .addTo(map);
 
-  // Middle of the cell for the label
   const center = bounds.getCenter();
-
-  // Create a marker with a DivIcon for showing the token number
-  const marker = leaflet.marker(center, {
-    interactive: false,
-    icon: leaflet.divIcon({
-      className: "cell-label", // CSS class you can style
-      html: "", // will fill in with token value
-      iconSize: [30, 20], // adjust as needed
-      iconAnchor: [15, 10], // center it
-    }),
-  }).addTo(map);
+  const marker = leaflet
+    .marker(center, {
+      interactive: false,
+      icon: leaflet.divIcon({
+        className: "cell-label",
+        html: "",
+        iconSize: [30, 20],
+        iconAnchor: [15, 10],
+      }),
+    })
+    .addTo(map);
 
   rect.on("click", () => handleCellClick(i, j));
-
   cellLayers.set(cellKey(i, j), { rect, marker });
   redrawCell(i, j);
 }
 
 function redrawCell(i: number, j: number) {
-  const key = cellKey(i, j);
-  const layer = cellLayers.get(key);
+  const layer = cellLayers.get(cellKey(i, j));
   if (!layer) return;
 
   const value = getCellToken(i, j);
@@ -188,21 +271,48 @@ function redrawCell(i: number, j: number) {
 }
 
 // ---------------------------------------------
-// GRID GENERATION
+// SPAWNING / DESPAWNING
 // ---------------------------------------------
 
-for (let i = -GRID_RADIUS; i <= GRID_RADIUS; i++) {
-  for (let j = -GRID_RADIUS; j <= GRID_RADIUS; j++) {
-    drawCell(i, j);
+function updateCells() {
+  const center = map.getCenter();
+  const { i: ci, j: cj } = cellForLatLng(center.lat, center.lng);
+
+  const needed = new Set<string>();
+
+  for (let di = -GRID_RADIUS; di <= GRID_RADIUS; di++) {
+    for (let dj = -GRID_RADIUS; dj <= GRID_RADIUS; dj++) {
+      const i = ci + di;
+      const j = cj + dj;
+      const key = cellKey(i, j);
+      needed.add(key);
+      if (!cellLayers.has(key)) drawCell(i, j);
+    }
+  }
+
+  for (const key of cellLayers.keys()) {
+    if (!needed.has(key)) {
+      const { rect, marker } = cellLayers.get(key)!;
+      map.removeLayer(rect);
+      map.removeLayer(marker);
+      cellLayers.delete(key);
+      cellOverrides.delete(key);
+    }
   }
 }
+
+map.on("moveend", updateCells);
+updateCells();
 
 // ---------------------------------------------
 // CELL CLICK HANDLING
 // ---------------------------------------------
 
-function inRange(i: number, j: number): boolean {
-  return Math.abs(i) <= INTERACT_RANGE && Math.abs(j) <= INTERACT_RANGE;
+function inRange(i: number, j: number) {
+  return (
+    Math.abs(i - playerI) <= INTERACT_RANGE &&
+    Math.abs(j - playerJ) <= INTERACT_RANGE
+  );
 }
 
 function handleCellClick(i: number, j: number) {
@@ -213,7 +323,6 @@ function handleCellClick(i: number, j: number) {
 
   const cellValue = getCellToken(i, j);
 
-  // Case 1: holding nothing → pick up token
   if (held === null && cellValue !== null) {
     held = cellValue;
     setCellToken(i, j, null);
@@ -221,7 +330,6 @@ function handleCellClick(i: number, j: number) {
     return;
   }
 
-  // Case 2: holding something AND cell has same value → craft
   if (held !== null && cellValue !== null && held === cellValue) {
     const newVal = held * 2;
     held = null;
@@ -230,6 +338,27 @@ function handleCellClick(i: number, j: number) {
     return;
   }
 
-  // Case 3: holding something but can't place
   statusPanel.innerHTML = "Can't do that!";
+}
+
+// ---------------------------------------------
+// PLAYER MOVEMENT
+// ---------------------------------------------
+
+function movePlayer(di: number, dj: number) {
+  // Simple cell-based movement
+  playerI += di;
+  playerJ += dj;
+
+  playerPos = latLngFor(playerI, playerJ);
+
+  // Move the marker & circle
+  playerMarker.setLatLng(playerPos);
+  playerCircle.setLatLng(playerPos);
+
+  // Move the map to follow the player
+  map.setView(playerPos);
+
+  // Spawn/despawn visible cells
+  updateCells();
 }
