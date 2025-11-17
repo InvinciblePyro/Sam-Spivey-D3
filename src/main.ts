@@ -61,7 +61,7 @@ const map = leaflet.map(mapDiv, {
   zoom: 19,
   minZoom: 2,
   maxZoom: 19,
-  zoomControl: true,
+  zoomControl: false,
   scrollWheelZoom: true,
 });
 
