@@ -93,6 +93,9 @@ type CellState = { token: number | null };
 // Map key is "i,j" -> stores modified cells
 const modifiedCells = new Map<string, CellState>();
 
+// Track currently held token
+let held: number | null = null;
+
 // ---------------------------------------------
 // INVENTORY UI
 // ---------------------------------------------
