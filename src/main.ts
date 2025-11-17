@@ -1,5 +1,3 @@
-// finished D3.c
-
 // @deno-types="npm:@types/leaflet"
 import leaflet from "leaflet";
 
