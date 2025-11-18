@@ -51,6 +51,6 @@ As the player moves, cells continue to be visible all the way out to the edge of
 
 ### D3.d: Gameplay Across Real-world Space and Time
 
-- [ ] Movement is now geolocation based.
-- [ ] NewGame button.
-- [ ] Can switch between button and gps mode.
+- [x] Movement is now geolocation based.
+- [x] NewGame button.
+- [x] Can switch between button and gps mode.
