@@ -48,3 +48,9 @@ As the player moves, cells continue to be visible all the way out to the edge of
 
 - [x] Remade Cell Persistence
 - [x] Update "updateCells()" to use Flyweight
+
+### D3.d: Gameplay Across Real-world Space and Time
+
+- [ ] Movement is now geolocation based.
+- [ ] NewGame button.
+- [ ] Can switch between button and gps mode.
