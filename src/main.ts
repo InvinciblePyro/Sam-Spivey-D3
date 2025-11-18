@@ -406,10 +406,10 @@ class ButtonController implements MovementController {
     }
   };
   enable() {
-    window.addEventListener("keydown", this.keyHandler);
+    globalThis.addEventListener("keydown", this.keyHandler);
   }
   disable() {
-    window.removeEventListener("keydown", this.keyHandler);
+    globalThis.removeEventListener("keydown", this.keyHandler);
   }
 }
 
